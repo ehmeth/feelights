@@ -34,34 +34,27 @@ void main(void)
    LightsInit();
 
    AudioInRequestRead(sample_buffer, NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, AudioInSamplesReady);
-
-   struct k_poll_event events[1] = {
-        K_POLL_EVENT_INITIALIZER(K_POLL_TYPE_SIGNAL,
-                                 K_POLL_MODE_NOTIFY_ONLY,
-                                 &OsSiglnals[AudioInSamplesReady]),
-   };
-
+   EventsStartPeriodicEvent(16);
 
 	while (1) {
-      if (0 == k_poll(events, 1, K_MSEC(30)))
+      fl_event Event = WaitForEvent(30);
+      LOG_INF("fl_event: %d", Event);
+      if (PeriodicEvent == Event)
       {
          u32 NextAudioSampleIndex = (AudioSampleIndex + NUM_SAMPLES) & SAMPLE_INDEX_MASK;
 
-         events[0].signal->signaled = 0;
-         events[0].state = K_POLL_STATE_NOT_READY;
-
-         StripOutput(Pixels, NUM_OF_PIXELS);
-         Pixels = StripSwapBuffer(Pixels);
-
          AudioInRequestRead(&sample_buffer[NextAudioSampleIndex], NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, AudioInSamplesReady);
-
+         AudioSampleIndex = NextAudioSampleIndex;
+      }
+      if (AudioInSamplesReady == Event)
+      {
          DspNormalizeSamples(&sample_buffer[AudioSampleIndex], NUM_SAMPLES, FftInput);
          DspCalculateSpectrum(FftInput, NUM_SAMPLES, FftComplex, FftOut);
 
-         AudioSampleIndex = NextAudioSampleIndex;
-
          LightsUpdateAndRender(Pixels, NUM_OF_PIXELS, FftOut, NUM_SAMPLES);
+
+         StripOutput(Pixels, NUM_OF_PIXELS);
+         Pixels = StripSwapBuffer(Pixels);
       }
-      k_sleep(DELAY_TIME);
 	}
 }

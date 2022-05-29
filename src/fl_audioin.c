@@ -46,7 +46,6 @@ u32 AudioInInit()
 {
    u32 Result = 0;
 
-
 	if (!device_is_ready(DevAdc)) {
 		printk("ADC device not found\n");
 		return 4321;

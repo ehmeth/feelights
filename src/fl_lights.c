@@ -56,13 +56,13 @@ u32 LightsInit()
    Orbs[1].dP = 0.0f;
    Orbs[1].R = 8.5f;
    Orbs[1].dR = 0.0f;
-   Orbs[1].Color.R = 0.8f;
+   Orbs[1].Color.R = 1.0f;
    Orbs[1].Color.G = 0.1f;
    Orbs[1].Color.B = 0.2f;
    Orbs[1].Controller.Algo = spectrum_window;
    Orbs[1].Controller.Data.SpectrumWindow.PFreq = 23.0;
    Orbs[1].Controller.Data.SpectrumWindow.RFreq = 6.0;
-   Orbs[1].Controller.Data.SpectrumWindow.MaxIntensity = 60.0f;
+   Orbs[1].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
 
    return 0;
 }
