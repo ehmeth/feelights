@@ -32,7 +32,7 @@ LOG_MODULE_REGISTER(main);
 #define DELAY_TIME K_MSEC(10)
 #define NUM_OF_PIXELS (30)
 
-internal int16_t sample_buffer[2*NUM_SAMPLES];
+internal int16_t SampleBuffer[2*NUM_SAMPLES];
 
 internal f32 FftInput[NUM_SAMPLES];
 internal f32 FftComplex[2*NUM_SAMPLES];
@@ -42,6 +42,7 @@ void main(void)
 {
    u32 AudioSampleIndex = 0;
    pixel *Pixels = StripGetBuffer();
+   u32 ret = 0;
 #ifdef CONFIG_TIMING_FUNCTIONS
    uint64_t TotalCycles = 0, TotalNs = 0;
    uint64_t SamplesCycles = 0, SamplesNs = 0;
@@ -64,7 +65,7 @@ void main(void)
    TStart = timing_counter_get();
 #endif
 
-   AudioInRequestRead(sample_buffer, NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, EV_AUDIO_SAMPLES_AVAILABLE);
+   StripOutput(Pixels, NUM_OF_PIXELS);
    EventsStartPeriodicEvent(16);
 
 	while (1) {
@@ -108,7 +109,11 @@ void main(void)
 
          u32 NextAudioSampleIndex = (AudioSampleIndex + NUM_SAMPLES) & SAMPLE_INDEX_MASK;
 
-         AudioInRequestRead(&sample_buffer[NextAudioSampleIndex], NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, EV_AUDIO_SAMPLES_AVAILABLE);
+         ret = AudioInRequestRead(&SampleBuffer[NextAudioSampleIndex], NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, EV_AUDIO_SAMPLES_AVAILABLE);
+         if (ret)
+         {
+            LOG_ERR("audio req failed: %d", ret);
+         }
          AudioSampleIndex = NextAudioSampleIndex;
       }
       if (EV_AUDIO_SAMPLES_AVAILABLE == Event)
@@ -116,7 +121,7 @@ void main(void)
 #ifdef CONFIG_TIMING_FUNCTIONS
          TSamplesReady = timing_counter_get();
 #endif
-         DspNormalizeSamples(&sample_buffer[AudioSampleIndex], NUM_SAMPLES, FftInput);
+         DspNormalizeSamples(&SampleBuffer[AudioSampleIndex], NUM_SAMPLES, FftInput);
          DspCalculateSpectrum(FftInput, NUM_SAMPLES, FftComplex, FftOut);
 #ifdef CONFIG_TIMING_FUNCTIONS
          TFftDone = timing_counter_get();

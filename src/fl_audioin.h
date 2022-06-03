@@ -6,6 +6,6 @@
 
 u32 AudioInInit();
 
-u32 AudioInRequestRead(u16* Buffer, u32 BufferSize, u32 NumSamples, fl_event EvSamplesAvailable);
+int AudioInRequestRead(u16* Buffer, u32 BufferSize, u32 NumSamples, fl_event EvSamplesAvailable);
 
 #endif // FL_AUDIOIN_H__

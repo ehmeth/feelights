@@ -27,17 +27,11 @@
 	};
 
    dmas = <&dma2 5 3 0x28440 0x03>,
-         <&dma2 2 3 0x28480 0x03>;
+          <&dma2 2 3 0x28480 0x03>;
    dma-names = "tx", "rx";
 
 	pinctrl-0 = <&spi1_nss_pa4 &spi1_sck_pa5
 		     &spi1_miso_pa6 &spi1_mosi_pa7>;
-	pinctrl-names = "default";
-	status = "okay";
-};
-
-&adc3 {
-	pinctrl-0 = < &adc3_in8_pf10>;
 	pinctrl-names = "default";
 	status = "okay";
 };
@@ -49,6 +43,7 @@
 / {
 	aliases {
 		led-strip = &led_strip;
+		mic-dma = &dma2;
 	};
 
 	zephyr,user {
