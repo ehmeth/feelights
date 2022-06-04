@@ -11,9 +11,7 @@ source "Kconfig.zephyr"
 config FEELIGHTS_STM32
   default y
   bool
-  select ASSERT
   select USE_STM32_LL_ADC
   select USE_STM32_LL_DMA
   select USE_STM32_LL_GPIO
   select USE_STM32_LL_TIM
-  select USE_STM32_ASSERT

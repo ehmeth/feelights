@@ -34,13 +34,13 @@ typedef struct
    controller_t Controller;
 } fl_orb;
 
-#define MAX_ORBS (2)
+#define MAX_ORBS (4)
 
 internal fl_orb Orbs[MAX_ORBS];
 
 u32 LightsInit()
 {
-   Orbs[0].P = 7.0f;
+   Orbs[0].P = 5.0f;
    Orbs[0].dP = 0.0f;
    Orbs[0].R = 5.5f;
    Orbs[0].dR = 0.0f;
@@ -48,22 +48,45 @@ u32 LightsInit()
    Orbs[0].Color.G = 0.7f;
    Orbs[0].Color.B = 0.1f;
    Orbs[0].Controller.Algo = spectrum_window;
-   Orbs[0].Controller.Data.SpectrumWindow.PFreq = 5.0;
-   Orbs[0].Controller.Data.SpectrumWindow.RFreq = 4.0;
+   Orbs[0].Controller.Data.SpectrumWindow.PFreq = 9.0;
+   Orbs[0].Controller.Data.SpectrumWindow.RFreq = 8.0;
    Orbs[0].Controller.Data.SpectrumWindow.MaxIntensity = 40.0f;
 
-   Orbs[1].P = 20.0f;
+   Orbs[1].P =9.0f;
    Orbs[1].dP = 0.0f;
-   Orbs[1].R = 8.5f;
+   Orbs[1].R = 6.5f;
    Orbs[1].dR = 0.0f;
    Orbs[1].Color.R = 1.0f;
    Orbs[1].Color.G = 0.1f;
    Orbs[1].Color.B = 0.2f;
    Orbs[1].Controller.Algo = spectrum_window;
-   Orbs[1].Controller.Data.SpectrumWindow.PFreq = 23.0;
-   Orbs[1].Controller.Data.SpectrumWindow.RFreq = 6.0;
+   Orbs[1].Controller.Data.SpectrumWindow.PFreq = 93.0;
+   Orbs[1].Controller.Data.SpectrumWindow.RFreq = 9.0;
    Orbs[1].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
 
+   Orbs[2].P = 20.0f;
+   Orbs[2].dP = 0.0f;
+   Orbs[2].R = 8.5f;
+   Orbs[2].dR = 0.0f;
+   Orbs[2].Color.R = 0.0f;
+   Orbs[2].Color.G = 0.4f;
+   Orbs[2].Color.B = 0.3f;
+   Orbs[2].Controller.Algo = spectrum_window;
+   Orbs[2].Controller.Data.SpectrumWindow.PFreq = 173.0;
+   Orbs[2].Controller.Data.SpectrumWindow.RFreq = 12.0;
+   Orbs[2].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
+
+   Orbs[3].P = 26.0f;
+   Orbs[3].dP = 0.0f;
+   Orbs[3].R = 5.5f;
+   Orbs[3].dR = 0.0f;
+   Orbs[3].Color.R = 1.0f;
+   Orbs[3].Color.G = 0.5f;
+   Orbs[3].Color.B = 0.0f;
+   Orbs[3].Controller.Algo = spectrum_window;
+   Orbs[3].Controller.Data.SpectrumWindow.PFreq = 223.0;
+   Orbs[3].Controller.Data.SpectrumWindow.RFreq = 12.0;
+   Orbs[3].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
    return 0;
 }
 

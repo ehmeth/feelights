@@ -15,21 +15,20 @@ LOG_MODULE_REGISTER(main);
 
 #ifdef CONFIG_TIMING_FUNCTIONS
 #include <timing/timing.h>
-/*
- * Samples: 21,651,281 ns <- This is obviously a problem...
- * Fft:      1,195,757 ns 
- * Update:     229,720 ns
- * Pixel:    2,471,695 ns
- * Total    25,548,456 ns
+/* TODO(kleindan)
+ * Also we need a west.yml file for easier building in the future: https://github.com/kpochwala/kubot-software/blob/main/west.yml
  *
- * 128 samples at 22us should amount to 2.8ms, not 21.6ms
+ * Samples:    11648299ns
+ * Fft:        11079338ns
+ * Update:       410983ns
+ * Pixel:       2454577ns
+ * Total       25593201ns
  */
 
 #endif
 
-#define NUM_SAMPLES (128)
-#define SAMPLE_INDEX_MASK  (0xFF)
-#define DELAY_TIME K_MSEC(10)
+#define NUM_SAMPLES (1024)
+#define SAMPLE_INDEX_MASK  ((NUM_SAMPLES * 2) - 1)
 #define NUM_OF_PIXELS (30)
 
 internal int16_t SampleBuffer[2*NUM_SAMPLES];
@@ -42,7 +41,6 @@ void main(void)
 {
    u32 AudioSampleIndex = 0;
    pixel *Pixels = StripGetBuffer();
-   u32 ret = 0;
 #ifdef CONFIG_TIMING_FUNCTIONS
    uint64_t TotalCycles = 0, TotalNs = 0;
    uint64_t SamplesCycles = 0, SamplesNs = 0;
@@ -53,11 +51,11 @@ void main(void)
    u32 TimingCount = 0;
 #endif
 
-   AudioInInit();
    EventsInit();
    StripInit();
    LightsInit();
    ButtonInit();
+   AudioInInit(SampleBuffer, sizeof(SampleBuffer));
 
 #ifdef CONFIG_TIMING_FUNCTIONS
    timing_init();
@@ -66,12 +64,38 @@ void main(void)
 #endif
 
    StripOutput(Pixels, NUM_OF_PIXELS);
-   EventsStartPeriodicEvent(16);
+   // EventsStartPeriodicEvent(16);
 
 	while (1) {
       fl_event Event = WaitForEvent(30);
       if (EV_PERIODIC_FRAME == Event)
       {
+
+
+      }
+      if (EV_AUDIO_SAMPLES_AVAILABLE == Event)
+      {
+#ifdef CONFIG_TIMING_FUNCTIONS
+         TSamplesReady = timing_counter_get();
+#endif
+         DspNormalizeSamples(&SampleBuffer[AudioSampleIndex], NUM_SAMPLES, FftInput);
+         DspCalculateSpectrum(FftInput, NUM_SAMPLES, FftComplex, FftOut);
+         AudioSampleIndex = (AudioSampleIndex + NUM_SAMPLES) & SAMPLE_INDEX_MASK;
+#ifdef CONFIG_TIMING_FUNCTIONS
+         TFftDone = timing_counter_get();
+#endif
+
+         LightsUpdateAndRender(Pixels, NUM_OF_PIXELS, FftOut, NUM_SAMPLES);
+#ifdef CONFIG_TIMING_FUNCTIONS
+         TUpdateDone = timing_counter_get();
+#endif
+
+         StripOutput(Pixels, NUM_OF_PIXELS);
+         Pixels = StripSwapBuffer(Pixels);
+#ifdef CONFIG_TIMING_FUNCTIONS
+         TPixelPushed = timing_counter_get();
+         timing_stop();
+#endif
 #ifdef CONFIG_TIMING_FUNCTIONS
          SamplesCycles     = timing_cycles_get(&TStart, &TSamplesReady);
          FftCycles         = timing_cycles_get(&TSamplesReady, &TFftDone);
@@ -105,38 +129,6 @@ void main(void)
 
          timing_start();
          TStart = timing_counter_get();
-#endif
-
-         u32 NextAudioSampleIndex = (AudioSampleIndex + NUM_SAMPLES) & SAMPLE_INDEX_MASK;
-
-         ret = AudioInRequestRead(&SampleBuffer[NextAudioSampleIndex], NUM_SAMPLES * sizeof(u16), NUM_SAMPLES, EV_AUDIO_SAMPLES_AVAILABLE);
-         if (ret)
-         {
-            LOG_ERR("audio req failed: %d", ret);
-         }
-         AudioSampleIndex = NextAudioSampleIndex;
-      }
-      if (EV_AUDIO_SAMPLES_AVAILABLE == Event)
-      {
-#ifdef CONFIG_TIMING_FUNCTIONS
-         TSamplesReady = timing_counter_get();
-#endif
-         DspNormalizeSamples(&SampleBuffer[AudioSampleIndex], NUM_SAMPLES, FftInput);
-         DspCalculateSpectrum(FftInput, NUM_SAMPLES, FftComplex, FftOut);
-#ifdef CONFIG_TIMING_FUNCTIONS
-         TFftDone = timing_counter_get();
-#endif
-
-         LightsUpdateAndRender(Pixels, NUM_OF_PIXELS, FftOut, NUM_SAMPLES);
-#ifdef CONFIG_TIMING_FUNCTIONS
-         TUpdateDone = timing_counter_get();
-#endif
-
-         StripOutput(Pixels, NUM_OF_PIXELS);
-         Pixels = StripSwapBuffer(Pixels);
-#ifdef CONFIG_TIMING_FUNCTIONS
-         TPixelPushed = timing_counter_get();
-         timing_stop();
 #endif
       }
       if (EV_BUTTON_PRESSED == Event)

@@ -4,8 +4,6 @@
 #include "fl_common.h"
 #include "fl_events.h"
 
-u32 AudioInInit();
-
-int AudioInRequestRead(u16* Buffer, u32 BufferSize, u32 NumSamples, fl_event EvSamplesAvailable);
+u32 AudioInInit(u16* Buffer, u32 BufferSize);
 
 #endif // FL_AUDIOIN_H__
