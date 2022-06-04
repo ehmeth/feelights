@@ -34,8 +34,8 @@ LOG_MODULE_REGISTER(main);
 internal int16_t SampleBuffer[2*NUM_SAMPLES];
 
 internal f32 FftInput[NUM_SAMPLES];
-internal f32 FftComplex[2*NUM_SAMPLES];
-internal f32 FftOut[NUM_SAMPLES];
+internal f32 FftComplex[NUM_SAMPLES];
+internal f32 FftOut[NUM_SAMPLES/2];
 
 void main(void)
 {

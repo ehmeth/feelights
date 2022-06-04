@@ -12,7 +12,7 @@ u32 DspCalculateSpectrum(f32 *Input, u32 NumSamples, f32 *IntermediateBuffer, f3
 
    arm_rfft_fast_init_f32(&fft, NumSamples);
    arm_rfft_fast_f32(&fft, Input, IntermediateBuffer, 0);
-   arm_cmplx_mag_f32(IntermediateBuffer, Output, NumSamples);
+   arm_cmplx_mag_f32(IntermediateBuffer, Output, NumSamples/2);
 
    /* TODO(kleindan) Check for error from CMSIS */
    return 0;
