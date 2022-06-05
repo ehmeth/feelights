@@ -81,11 +81,37 @@ u32 AudioInInit(u16* Buffer, u32 BufferSize)
 
    EnableAdcChannel(ADC3, LL_ADC_CHANNEL_8, LL_ADC_REG_RANK_1);
 
+
+   return Result;
+}
+
+u32 AudioInStart()
+{
+   int ReturnCode = dma_start(DmaDevice, 1);
+   if (ReturnCode != 0)
+   {
+      LOG_ERR("Dma start failed %d", ReturnCode);
+   }
+
    StartAdc(ADC3);
    LL_TIM_EnableCounter(TIM2);
    LL_TIM_GenerateEvent_UPDATE(TIM2);
 
-   return Result;
+   return ReturnCode;
+}
+
+u32 AudioInStop()
+{
+   LL_TIM_DisableCounter(TIM2);
+   StopAdc(ADC3);
+
+   int ReturnCode = dma_stop(DmaDevice, 1);
+   if (ReturnCode != 0)
+   {
+      LOG_ERR("Dma stop failed %d", ReturnCode);
+   }
+
+   return ReturnCode;
 }
 
 internal void DmaCallback(const struct device *Dev, void *UserData, uint32_t Channel, int Status)
@@ -140,11 +166,6 @@ internal void AdcDmaConfig(u16* Data, u32 BufferSize)
    if (ReturnCode != 0)
    {
       LOG_ERR("Dma config failed %d", ReturnCode);
-   }
-   ReturnCode = dma_start(DmaDevice, 1);
-   if (ReturnCode != 0)
-   {
-      LOG_ERR("Dma start failed %d", ReturnCode);
    }
 
 }
@@ -232,7 +253,7 @@ internal inline void EnableAdcChannel(ADC_TypeDef* Adc, u32 Channel, u32 Rank)
 {
    // Set ADC group regular sequence: Channel on the selected sequence Rank.
    LL_ADC_REG_SetSequencerRanks(Adc, Rank, Channel);
-   LL_ADC_SetChannelSamplingTime(Adc, Channel, LL_ADC_SAMPLINGTIME_15CYCLES);
+   LL_ADC_SetChannelSamplingTime(Adc, Channel, LL_ADC_SAMPLINGTIME_144CYCLES);
 }
 
 internal inline void StartAdc(ADC_TypeDef* Adc)

@@ -29,6 +29,10 @@ internal inline f32 Clamp(f32 Min, f32 A, f32 Max) {
    return Maximum(Minimum(A, Max), Min);
 }
 
+internal inline u32 ClampU(u32 Min, u32 A, u32 Max) {
+   return Maximum(Minimum(A, Max), Min);
+}
+
 internal inline i32 Round(f32 A) {
    return (i32)(A + 0.5f);
 }

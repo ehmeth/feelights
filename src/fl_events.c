@@ -52,7 +52,7 @@ u32 EventsStopPeriodicEvent()
 fl_event WaitForEvent(u32 TimeoutMs)
 {
    int WaitResult = 0;
-   k_timeout_t Timeout = (TimeoutMs == 0) ? K_NO_WAIT : K_MSEC(TimeoutMs);
+   k_timeout_t Timeout = (TimeoutMs == 0) ? K_FOREVER : K_MSEC(TimeoutMs);
    fl_event TriggeredEvent = EV_MAX_IDX;
 
    WaitResult = k_poll(OsEvents, ArrayCount(OsEvents), Timeout);

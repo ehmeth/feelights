@@ -1,6 +1,10 @@
 #include "fl_common.h"
 #include "fl_lights.h"
 
+#define LOG_LEVEL 4
+#include <logging/log.h>
+LOG_MODULE_REGISTER(lights);
+
 typedef enum {
    none,
    spectrum_window,
@@ -9,7 +13,7 @@ typedef enum {
 typedef struct {
    f32 PFreq;
    f32 RFreq;
-   f32 MaxIntensity;
+   f32 IntensityMultiplier;
 } algo_spectrum_window_t;
 
 typedef struct {
@@ -48,25 +52,25 @@ u32 LightsInit()
    Orbs[0].Color.G = 0.7f;
    Orbs[0].Color.B = 0.1f;
    Orbs[0].Controller.Algo = spectrum_window;
-   Orbs[0].Controller.Data.SpectrumWindow.PFreq = 9.0;
-   Orbs[0].Controller.Data.SpectrumWindow.RFreq = 8.0;
-   Orbs[0].Controller.Data.SpectrumWindow.MaxIntensity = 40.0f;
+   Orbs[0].Controller.Data.SpectrumWindow.PFreq = 7.0;
+   Orbs[0].Controller.Data.SpectrumWindow.RFreq = 6.0;
+   Orbs[0].Controller.Data.SpectrumWindow.IntensityMultiplier = 11.0f;
 
    Orbs[1].P =9.0f;
    Orbs[1].dP = 0.0f;
    Orbs[1].R = 6.5f;
    Orbs[1].dR = 0.0f;
-   Orbs[1].Color.R = 1.0f;
+   Orbs[1].Color.R = 0.9f;
    Orbs[1].Color.G = 0.1f;
    Orbs[1].Color.B = 0.2f;
    Orbs[1].Controller.Algo = spectrum_window;
    Orbs[1].Controller.Data.SpectrumWindow.PFreq = 93.0;
    Orbs[1].Controller.Data.SpectrumWindow.RFreq = 9.0;
-   Orbs[1].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
+   Orbs[1].Controller.Data.SpectrumWindow.IntensityMultiplier = 124.0f;
 
-   Orbs[2].P = 20.0f;
+   Orbs[2].P = 18.0f;
    Orbs[2].dP = 0.0f;
-   Orbs[2].R = 8.5f;
+   Orbs[2].R = 6.5f;
    Orbs[2].dR = 0.0f;
    Orbs[2].Color.R = 0.0f;
    Orbs[2].Color.G = 0.4f;
@@ -74,19 +78,19 @@ u32 LightsInit()
    Orbs[2].Controller.Algo = spectrum_window;
    Orbs[2].Controller.Data.SpectrumWindow.PFreq = 173.0;
    Orbs[2].Controller.Data.SpectrumWindow.RFreq = 12.0;
-   Orbs[2].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
+   Orbs[2].Controller.Data.SpectrumWindow.IntensityMultiplier = 240.0f;
 
    Orbs[3].P = 26.0f;
    Orbs[3].dP = 0.0f;
    Orbs[3].R = 5.5f;
    Orbs[3].dR = 0.0f;
-   Orbs[3].Color.R = 1.0f;
+   Orbs[3].Color.R = 0.9f;
    Orbs[3].Color.G = 0.5f;
    Orbs[3].Color.B = 0.0f;
    Orbs[3].Controller.Algo = spectrum_window;
    Orbs[3].Controller.Data.SpectrumWindow.PFreq = 223.0;
-   Orbs[3].Controller.Data.SpectrumWindow.RFreq = 12.0;
-   Orbs[3].Controller.Data.SpectrumWindow.MaxIntensity = 90.0f;
+   Orbs[3].Controller.Data.SpectrumWindow.RFreq = 22.0;
+   Orbs[3].Controller.Data.SpectrumWindow.IntensityMultiplier = 290.0f;
    return 0;
 }
 
@@ -114,10 +118,13 @@ void LightsUpdateAndRender(pixel *Pixels, u32 NumPixels, f32 *Spectrum, u32 NumS
 
                for ( ; IFreq < MaxIFreq; IFreq++)
                {
-                  Intensity += Spectrum[IFreq];
+                  if (Spectrum[IFreq] > 0.002f)
+                  {
+                     Intensity += Spectrum[IFreq];
+                  }
                }
                Intensity /= 2.0f * Window->RFreq;
-               Orb->Intensity = Lerp(0, Intensity, Window->MaxIntensity);
+               Orb->Intensity = Clamp(Orb->Intensity * 0.7f, Intensity * Window->IntensityMultiplier, 255.0f);
             }
             break;
          case none:
@@ -130,16 +137,32 @@ void LightsUpdateAndRender(pixel *Pixels, u32 NumPixels, f32 *Spectrum, u32 NumS
       i32 I = (i32)P;
       I = I < 0 ? 0 : I;
       MaxI = MaxI >= NumPixels ? NumPixels : MaxI;
+      f32 OrbRadiusSq = Square(Orb->R);
       for ( ; I < MaxI; ++I, P += 1.0f)
       {
-         f32 Dist = Abs(P - Orb->P);
-         f32 Rate = Clamp(0.0f, 1.0f - (Dist/Orb->R), 1.0f);
-         f32 Intensity = Round(Lerp(0, Rate, Orb->Intensity));
-         Pixels[I].Color.r += (u8)(Orb->Color.R * Intensity);
-         Pixels[I].Color.g += (u8)(Orb->Color.G * Intensity);
-         Pixels[I].Color.b += (u8)(Orb->Color.B * Intensity);
+         f32 DistSq = Square(P - Orb->P);
+         f32 Rate = 1.0f - (DistSq - OrbRadiusSq);
+         f32 Intensity = Rate * Orb->Intensity;
+         Pixels[I].Color.r = ClampU(0, Pixels[I].Color.r + (u32)(Orb->Color.R * Intensity), 250);
+         Pixels[I].Color.g = ClampU(0, Pixels[I].Color.g + (u32)(Orb->Color.G * Intensity), 250);
+         Pixels[I].Color.b = ClampU(0, Pixels[I].Color.b + (u32)(Orb->Color.B * Intensity), 250);
 
       }
    }
+
+   
+#if 0
+   static u32 DebugCount = 0;
+   if (DebugCount++ > 100)
+   {
+      LOG_INF("I1: %7d, I2: %7d, I3 %7d, I4 %7d", 
+            (i32)(Orbs[0].Intensity * 1000.0f),
+            (i32)(Orbs[1].Intensity * 1000.0f),
+            (i32)(Orbs[2].Intensity * 1000.0f),
+            (i32)(Orbs[3].Intensity * 1000.0f));
+      DebugCount = 0;
+   }
+#endif
+
 }
 

@@ -32,49 +32,245 @@ LOG_MODULE_REGISTER(main);
 #define NUM_OF_PIXELS (30)
 
 internal int16_t SampleBuffer[2*NUM_SAMPLES];
-
 internal f32 FftInput[NUM_SAMPLES];
 internal f32 FftComplex[NUM_SAMPLES];
 internal f32 FftOut[NUM_SAMPLES/2];
+internal pixel *Pixels;
 
-void main(void)
-{
-   u32 AudioSampleIndex = 0;
-   pixel *Pixels = StripGetBuffer();
 #ifdef CONFIG_TIMING_FUNCTIONS
-   uint64_t TotalCycles = 0, TotalNs = 0;
-   uint64_t SamplesCycles = 0, SamplesNs = 0;
-   uint64_t FftCycles = 0, FftNs = 0;
-   uint64_t UpdateCycles = 0, UpdateNs = 0;
-   uint64_t PixelPushCycles = 0, PixelPushNs = 0;
-   timing_t TStart, TSamplesReady, TFftDone, TUpdateDone, TPixelPushed;
-   u32 TimingCount = 0;
+internal uint64_t TotalCycles = 0, TotalNs = 0;
+internal uint64_t SamplesCycles = 0, SamplesNs = 0;
+internal uint64_t FftCycles = 0, FftNs = 0;
+internal uint64_t UpdateCycles = 0, UpdateNs = 0;
+internal uint64_t PixelPushCycles = 0, PixelPushNs = 0;
+internal timing_t TStart, TSamplesReady, TFftDone, TUpdateDone, TPixelPushed;
+internal u32 TimingCount = 0;
 #endif
 
-   EventsInit();
-   StripInit();
-   LightsInit();
-   ButtonInit();
-   AudioInInit(SampleBuffer, sizeof(SampleBuffer));
+typedef enum {
+   MODE_NORMAL,
+   MODE_INSPECTION,
+   MODE_BROWNOUT,
+   MODE_MAX
+} fl_system_mode;
 
+
+internal void           ModeNormalOnEnter();
+internal fl_system_mode ModeNormalOnEvent(fl_event Event);
+internal void           ModeNormalOnLeave();
+
+internal void           ModeInspectionOnEnter();
+internal fl_system_mode ModeInspectionOnEvent(fl_event Event);
+internal void           ModeInspectionOnLeave();
+
+internal void           ModeBrownOutOnEnter();
+internal fl_system_mode ModeBrownOutOnEvent(fl_event Event);
+internal void           ModeBrownOutOnLeave();
+
+typedef fl_system_mode (*mode_event_handler_t)(fl_event);
+typedef void (*mode_enter_handler_t)();
+typedef void (*mode_leave_handler_t)();
+
+typedef struct {
+   mode_enter_handler_t OnEnter;
+   mode_event_handler_t OnEvent;
+   mode_leave_handler_t OnLeave;
+} mode_functions;
+
+internal u32 ModeTimeouts[MODE_MAX] = {
+   60,
+   0,
+   2000
+};
+
+internal mode_functions ModeHandlers[MODE_MAX] = {
+   {
+      .OnEnter = ModeNormalOnEnter,
+      .OnEvent = ModeNormalOnEvent,
+      .OnLeave = ModeNormalOnLeave,
+   },
+   {
+      .OnEnter = ModeInspectionOnEnter,
+      .OnEvent = ModeInspectionOnEvent,
+      .OnLeave = ModeInspectionOnLeave,
+   },
+   {
+      .OnEnter = ModeBrownOutOnEnter,
+      .OnEvent = ModeBrownOutOnEvent,
+      .OnLeave = ModeBrownOutOnLeave,
+   },
+};
+
+internal void ModeInspectionOnEnter()
+{
+   static const pixel RED = {
+      .Color = {
+         .r = 0xff,
+      },
+   };
+
+   for (int I = 0; I < NUM_OF_PIXELS; ++I)
+   {
+      Pixels[I].Dword = RED.Dword;
+   }
+
+   StripOutput(Pixels, NUM_OF_PIXELS);
+   Pixels = StripSwapBuffer(Pixels);
+}
+
+internal fl_system_mode ModeInspectionOnEvent(fl_event Event)
+{
+   fl_system_mode NextMode = MODE_INSPECTION;
+
+   static const pixel GREEN_BLUE[2] = {
+      {
+         .Color = {
+            .g = 0xff,
+         },
+      },
+      {
+         .Color = {
+            .b = 0xff,
+         },
+      },
+   };
+   static u32 CurrentColor = 0;
+
+   switch (Event)
+   {
+      case EV_PERIODIC_FRAME:
+         break;
+      case EV_AUDIO_SAMPLES_AVAILABLE:
+         break;
+      case EV_BUTTON_PRESSED:
+         break;
+      case EV_BUTTON_RELEASED:
+         if (CurrentColor >= 2)
+         {
+            NextMode = MODE_BROWNOUT;
+            CurrentColor = 0;
+         }
+         else
+         {
+            for (int I = 0; I < NUM_OF_PIXELS; ++I)
+            {
+               Pixels[I].Dword = GREEN_BLUE[CurrentColor].Dword;
+            }
+            CurrentColor++;
+
+            StripOutput(Pixels, NUM_OF_PIXELS);
+            Pixels = StripSwapBuffer(Pixels);
+         }
+         break;
+      default:
+         break;
+   }
+
+   return NextMode;
+}
+
+internal void ModeInspectionOnLeave()
+{
+   /* Nothing to do really? */
+}
+
+internal void ModeBrownOutOnEnter()
+{
+   static const pixel ALL = {
+      .Color = {
+         .r = 0xff,
+         .g = 0xff,
+         .b = 0xff,
+      },
+   };
+
+   for (int I = 0; I < NUM_OF_PIXELS; ++I)
+   {
+      Pixels[I].Dword = ALL.Dword;
+   }
+   Pixels = StripSwapBuffer(Pixels);
+   for (int I = 0; I < NUM_OF_PIXELS; ++I)
+   {
+      if ((I % 2) == 0)
+      {
+         Pixels[I].Dword = ALL.Dword;
+      }
+      else
+      {
+         Pixels[I].Dword = 0;
+      }
+   }
+
+   Pixels = StripSwapBuffer(Pixels);
+   StripOutput(Pixels, NUM_OF_PIXELS);
+   Pixels = StripSwapBuffer(Pixels);
+
+   EventsStartPeriodicEvent(1000);
+}
+
+internal fl_system_mode ModeBrownOutOnEvent(fl_event Event)
+{
+   fl_system_mode NextMode = MODE_BROWNOUT;
+
+   switch (Event)
+   {
+      case EV_PERIODIC_FRAME:
+         StripOutput(Pixels, NUM_OF_PIXELS);
+         Pixels = StripSwapBuffer(Pixels);
+         break;
+      case EV_AUDIO_SAMPLES_AVAILABLE:
+         break;
+      case EV_BUTTON_PRESSED:
+         break;
+      case EV_BUTTON_RELEASED:
+         NextMode = MODE_NORMAL;
+         break;
+      default:
+         break;
+   }
+
+   return NextMode;
+}
+
+internal void ModeBrownOutOnLeave()
+{
+   EventsStopPeriodicEvent();
+}
+
+internal void ModeNormalOnEnter()
+{
 #ifdef CONFIG_TIMING_FUNCTIONS
    timing_init();
    timing_start();
    TStart = timing_counter_get();
 #endif
-
+   for (int I = 0; I < NUM_OF_PIXELS; ++I)
+   {
+      Pixels[I].Dword = 0;
+   }
    StripOutput(Pixels, NUM_OF_PIXELS);
-   // EventsStartPeriodicEvent(16);
+   Pixels = StripSwapBuffer(Pixels);
+   AudioInStart();
 
-	while (1) {
-      fl_event Event = WaitForEvent(30);
-      if (EV_PERIODIC_FRAME == Event)
-      {
+}
+internal void ModeNormalOnLeave()
+{
+   AudioInStop();
+#ifdef CONFIG_TIMING_FUNCTIONS
+   timing_stop();
+#endif
+}
 
+internal inline fl_system_mode ModeNormalOnEvent(fl_event Event)
+{
+   static u32 AudioSampleIndex = 0;
+   fl_system_mode NextMode = MODE_NORMAL;
 
-      }
-      if (EV_AUDIO_SAMPLES_AVAILABLE == Event)
-      {
+   switch (Event)
+   {
+      case EV_PERIODIC_FRAME:
+         break;
+      case EV_AUDIO_SAMPLES_AVAILABLE:
 #ifdef CONFIG_TIMING_FUNCTIONS
          TSamplesReady = timing_counter_get();
 #endif
@@ -130,14 +326,45 @@ void main(void)
          timing_start();
          TStart = timing_counter_get();
 #endif
-      }
-      if (EV_BUTTON_PRESSED == Event)
+         break;
+      case EV_BUTTON_PRESSED:
+         break;
+      case EV_BUTTON_RELEASED:
+         NextMode = MODE_INSPECTION;
+         break;
+      default:
+         break;
+   }
+
+   return NextMode;
+}
+
+void main(void)
+{
+   Pixels = StripGetBuffer();
+
+   EventsInit();
+   StripInit();
+   LightsInit();
+   ButtonInit();
+   AudioInInit(SampleBuffer, sizeof(SampleBuffer));
+
+   StripOutput(Pixels, NUM_OF_PIXELS);
+   Pixels = StripSwapBuffer(Pixels);
+
+   fl_system_mode CurrentMode = MODE_NORMAL;
+   ModeHandlers[CurrentMode].OnEnter();
+
+	while (1) {
+      fl_event Event = WaitForEvent(ModeTimeouts[CurrentMode]);
+
+      fl_system_mode NextMode = ModeHandlers[CurrentMode].OnEvent(Event);
+
+      if (NextMode != CurrentMode)
       {
-         LOG_INF("Button pressed");
-      }
-      if (EV_BUTTON_RELEASED == Event)
-      {
-         LOG_INF("Button released");
+         ModeHandlers[CurrentMode].OnLeave();
+         CurrentMode = NextMode;
+         ModeHandlers[CurrentMode].OnEnter();
       }
 	}
 }
