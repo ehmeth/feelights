@@ -3,11 +3,11 @@
 
 manifest:
   self:
-    path: feelights-software
+    path: feelights
 
   remotes:
-    - name: feelights
-      url-base: git@github.com:ehmeth
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos      
 
   projects:
     - name: zephyr
