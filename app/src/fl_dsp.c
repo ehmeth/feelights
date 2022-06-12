@@ -9,7 +9,7 @@ LOG_MODULE_REGISTER(dsp);
 
 u32 DspCalculateSpectrum(f32 *Input, u32 NumSamples, f32 *IntermediateBuffer, f32 *Output)
 {
-   const f32 FfftScalingFactor = 1.0f / 453.352f;
+   f32 FfftScalingFactor = 1.0f / (f32)NumSamples;
    arm_rfft_fast_instance_f32 fft;
 
    arm_rfft_fast_init_f32(&fft, NumSamples);

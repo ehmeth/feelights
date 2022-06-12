@@ -5,6 +5,26 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(lights);
 
+#define MIN_ORB_X (5.0f)
+#define MAX_ORB_X (123.0f)
+#define MIN_ORB_R (5.0f)
+#define MAX_ORB_R (10.0f)
+#define MIN_ORB_FREQ_IDX (3.0f)
+#define MAX_ORB_FREQ_IDX (200.0f - MIN_ORB_FREQ_R)
+#define MIN_ORB_FREQ_R (1.0f)
+#define MAX_ORB_FREQ_R (5.0f - MIN_ORB_FREQ_R)
+
+typedef struct {
+   f32 R;
+   f32 G;
+   f32 B;
+} fl_color;
+
+typedef struct {
+   fl_color Base;
+   fl_color Accents[3];
+} fl_palette;
+
 typedef enum {
    none,
    spectrum_window,
@@ -30,72 +50,126 @@ typedef struct
    f32 R;
    f32 dR;
    f32 Intensity;
-   struct {
-      f32 R;
-      f32 G;
-      f32 B;
-   } Color;
+   fl_color Color;
    controller_t Controller;
 } fl_orb;
+
+typedef struct
+{
+   fl_color Color;
+   f32 Intensity;
+   f32 IntensityMultiplier;
+   f32 PFreq;
+   f32 RFreq;
+} fl_ambient;
+
 
 #define MAX_ORBS (4)
 
 internal fl_orb Orbs[MAX_ORBS];
 
+internal fl_ambient Ambient;
+
+internal fl_palette Palette[4];
+
+internal void log_orb(fl_orb *Orb)
+{
+   LOG_INF("P %4f, R %f, RGB: %4f, %4f, %4f, PF %4f, RF, %4f, I %4f",
+         Orb->P,
+         Orb->R,
+         Orb->Color.R,
+         Orb->Color.G,
+         Orb->Color.B,
+         Orb->Controller.Data.SpectrumWindow.PFreq,
+         Orb->Controller.Data.SpectrumWindow.RFreq,
+         Orb->Controller.Data.SpectrumWindow.IntensityMultiplier
+         );
+}
+internal inline void create_orb(fl_orb *Orb)
+{
+   Orb->P = MIN_ORB_X + MAX_ORB_X * Random();
+   Orb->dP = 0.0f;
+   Orb->R = MIN_ORB_R + MAX_ORB_R * Random();
+   Orb->dR = 0.0f;
+   Orb->Controller.Algo = spectrum_window;
+   Orb->Controller.Data.SpectrumWindow.PFreq = MIN_ORB_FREQ_IDX + MAX_ORB_FREQ_IDX * Random();
+   Orb->Controller.Data.SpectrumWindow.RFreq = MIN_ORB_FREQ_R + MAX_ORB_FREQ_R * Random();
+   Orb->Controller.Data.SpectrumWindow.IntensityMultiplier = 100.0f + 140.0f * Random();
+}
+
+internal inline void RandomizeOrbs()
+{
+   for (i32 I = 0; I < MAX_ORBS; ++I)
+   {
+      create_orb(&Orbs[I]);
+   }
+}
+
+internal void ApplyPalette(fl_palette *Palette)
+{
+   Ambient.Color.R = Palette->Base.R;
+   Ambient.Color.G = Palette->Base.G;
+   Ambient.Color.B = Palette->Base.B;
+
+   for (i32 I = 0; I < MAX_ORBS; ++I)
+   {
+      Orbs[I].Color.R = Palette->Accents[I % 3].R;
+      Orbs[I].Color.G = Palette->Accents[I % 3].G;
+      Orbs[I].Color.B = Palette->Accents[I % 3].B;
+   }
+}
+
+void MakePalette(fl_palette * Palette, u32 Base, u32 Accent1, u32 Accent2, u32 Accent3)
+{
+   const f32 OneOver255 = 1.0f / 255.0f;
+   const f32 MixingR = 4.1f/5.8f;
+   const f32 MixingG = 0.7f/5.8f;
+   const f32 MixingB = 1.0f/5.8f;
+   const f32 RFactor = MixingR * OneOver255;
+   const f32 GFactor = MixingG * OneOver255;
+   const f32 BFactor = MixingB * OneOver255;
+
+   Palette->Base.R = (f32)((Base >> 16) & 0xFF) * RFactor;
+   Palette->Base.G = (f32)((Base >>  8) & 0xFF) * GFactor;
+   Palette->Base.B = (f32)((Base >>  0) & 0xFF) * BFactor;
+
+   Palette->Accents[0].R = (f32)((Accent1 >> 16) & 0xFF) * RFactor;
+   Palette->Accents[0].G = (f32)((Accent1 >>  8) & 0xFF) * GFactor;
+   Palette->Accents[0].B = (f32)((Accent1 >>  0) & 0xFF) * BFactor;
+
+   Palette->Accents[1].R = (f32)((Accent2 >> 16) & 0xFF) * RFactor;
+   Palette->Accents[1].G = (f32)((Accent2 >>  8) & 0xFF) * GFactor;
+   Palette->Accents[1].B = (f32)((Accent2 >>  0) & 0xFF) * BFactor;
+
+   Palette->Accents[2].R = (f32)((Accent3 >> 16) & 0xFF) * RFactor;
+   Palette->Accents[2].G = (f32)((Accent3 >>  8) & 0xFF) * GFactor;
+   Palette->Accents[2].B = (f32)((Accent3 >>  0) & 0xFF) * BFactor;
+}
+
 u32 LightsInit()
 {
-   Orbs[0].P = 5.0f;
-   Orbs[0].dP = 0.0f;
-   Orbs[0].R = 5.5f;
-   Orbs[0].dR = 0.0f;
-   Orbs[0].Color.R = 0.0f;
-   Orbs[0].Color.G = 0.7f;
-   Orbs[0].Color.B = 0.1f;
-   Orbs[0].Controller.Algo = spectrum_window;
-   Orbs[0].Controller.Data.SpectrumWindow.PFreq = 7.0;
-   Orbs[0].Controller.Data.SpectrumWindow.RFreq = 6.0;
-   Orbs[0].Controller.Data.SpectrumWindow.IntensityMultiplier = 11.0f;
+   MakePalette(&Palette[0], 0xFABEC0, 0xF85C70, 0xF37970, 0xE43D40);
+   MakePalette(&Palette[1], 0x32CD30, 0x2C5E1A, 0x1A4314, 0xB2D2A4);
+   MakePalette(&Palette[2], 0x6AABD2, 0xB7CFDC, 0x385E72, 0xD9E4EC);
+   MakePalette(&Palette[3], 0x5D59AF, 0x6AABD2, 0xBE81B6, 0xE390C8);
+   ApplyPalette(&Palette[0]);
 
-   Orbs[1].P =9.0f;
-   Orbs[1].dP = 0.0f;
-   Orbs[1].R = 6.5f;
-   Orbs[1].dR = 0.0f;
-   Orbs[1].Color.R = 0.9f;
-   Orbs[1].Color.G = 0.1f;
-   Orbs[1].Color.B = 0.2f;
-   Orbs[1].Controller.Algo = spectrum_window;
-   Orbs[1].Controller.Data.SpectrumWindow.PFreq = 93.0;
-   Orbs[1].Controller.Data.SpectrumWindow.RFreq = 9.0;
-   Orbs[1].Controller.Data.SpectrumWindow.IntensityMultiplier = 124.0f;
+   RandomizeOrbs();
 
-   Orbs[2].P = 18.0f;
-   Orbs[2].dP = 0.0f;
-   Orbs[2].R = 6.5f;
-   Orbs[2].dR = 0.0f;
-   Orbs[2].Color.R = 0.0f;
-   Orbs[2].Color.G = 0.4f;
-   Orbs[2].Color.B = 0.3f;
-   Orbs[2].Controller.Algo = spectrum_window;
-   Orbs[2].Controller.Data.SpectrumWindow.PFreq = 173.0;
-   Orbs[2].Controller.Data.SpectrumWindow.RFreq = 12.0;
-   Orbs[2].Controller.Data.SpectrumWindow.IntensityMultiplier = 240.0f;
+   Ambient.Intensity = 0.0f;
+   Ambient.PFreq = 5.0f;
+   Ambient.RFreq = 4.0f;
+   Ambient.IntensityMultiplier = 90.0f;
 
-   Orbs[3].P = 26.0f;
-   Orbs[3].dP = 0.0f;
-   Orbs[3].R = 5.5f;
-   Orbs[3].dR = 0.0f;
-   Orbs[3].Color.R = 0.9f;
-   Orbs[3].Color.G = 0.5f;
-   Orbs[3].Color.B = 0.0f;
-   Orbs[3].Controller.Algo = spectrum_window;
-   Orbs[3].Controller.Data.SpectrumWindow.PFreq = 223.0;
-   Orbs[3].Controller.Data.SpectrumWindow.RFreq = 22.0;
-   Orbs[3].Controller.Data.SpectrumWindow.IntensityMultiplier = 290.0f;
    return 0;
 }
 
+
+
 void LightsUpdateAndRender(pixel *Pixels, u32 NumPixels, f32 *Spectrum, u32 NumSamples)
 {
+   static u32 ResetCount = 100;
+
    for (size_t i = 0; i < NumPixels; ++i)
    {
       Pixels[i].Dword = 0;
@@ -149,8 +223,44 @@ void LightsUpdateAndRender(pixel *Pixels, u32 NumPixels, f32 *Spectrum, u32 NumS
 
       }
    }
-
    
+   {
+      f32 Intensity = 0.0f;
+      i32 IFreq = (i32)ceil(Ambient.PFreq - Ambient.RFreq);
+      i32 MaxIFreq = (i32)floor(Ambient.PFreq + Ambient.RFreq);
+      IFreq = IFreq < 0 ? 0 : IFreq;
+      MaxIFreq = MaxIFreq >= NumSamples ? NumSamples : MaxIFreq;
+
+      for ( ; IFreq < MaxIFreq; IFreq++)
+      {
+         if (Spectrum[IFreq] > 0.002f)
+         {
+            Intensity += Spectrum[IFreq];
+         }
+      }
+      Intensity /= 2.0f * Ambient.RFreq;
+      Ambient.Intensity = Clamp(Maximum(Ambient.Intensity * 0.9f, 20.0f), Intensity * Ambient.IntensityMultiplier, 255.0f);
+
+      for (i32 I = 0; I < NumPixels; ++I)
+      {
+         u32 CurrentIntensity = Pixels[I].Color.r + Pixels[I].Color.g + Pixels[I].Color.b;
+         if (CurrentIntensity < 50)
+         {
+            Pixels[I].Color.r = ClampU(0, Pixels[I].Color.r + (u32)(Ambient.Color.R * Ambient.Intensity), 250);
+            Pixels[I].Color.g = ClampU(0, Pixels[I].Color.g + (u32)(Ambient.Color.G * Ambient.Intensity), 250);
+            Pixels[I].Color.b = ClampU(0, Pixels[I].Color.b + (u32)(Ambient.Color.B * Ambient.Intensity), 250);
+         }
+      }
+   }
+
+   if (--ResetCount == 0)
+   {
+      static u32 PaletteIndex = 0;
+      RandomizeOrbs();
+      ApplyPalette(&Palette[++PaletteIndex & 0x3]);
+      ResetCount = 50 + (sys_rand32_get() & 0x0FF);
+   }
+
 #if 0
    static u32 DebugCount = 0;
    if (DebugCount++ > 100)

@@ -18,7 +18,7 @@
 		spi-max-frequency = <SPI_FREQ>;
 
 		/* WS2812 */
-		chain-length = <30>; /* arbitrary; change at will */
+		chain-length = <123>; /* arbitrary; change at will */
 		color-mapping = <LED_COLOR_ID_GREEN
 				 LED_COLOR_ID_RED
 				 LED_COLOR_ID_BLUE>;
@@ -40,7 +40,19 @@
    status = "okay";
 };
 
+&uart4 {
+	pinctrl-0 = <&uart4_tx_pc10 &uart4_rx_pc11>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
 / {
+	chosen {
+		zephyr,shell-uart = &uart4;
+		zephyr,console = &usart1;
+	};
+
 	aliases {
 		led-strip = &led_strip;
 		mic-dma = &dma2;

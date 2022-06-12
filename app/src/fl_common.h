@@ -2,6 +2,7 @@
 #define FL_COMMON_H__
 
 #include <arm_math.h>
+#include <random/rand32.h>
 
 typedef unsigned char      u8;
 typedef unsigned short     u16;
@@ -43,6 +44,14 @@ internal inline f32 Lerp(f32 A, f32 t, f32 B) {
 
 internal inline f32 Sine(f32 V) {
    return arm_sin_f32(V);
+}
+
+internal inline f32 Random()
+{
+   const f32 OneOverMaxU32 = 1.0f / (f32)(0xffffffff);
+   f32 Value = (f32)sys_rand32_get();
+
+   return Value * OneOverMaxU32;
 }
 
 #endif

@@ -6,6 +6,8 @@
 LOG_MODULE_REGISTER(main);
 
 #include <zephyr.h>
+#include <version.h>
+#include <zephyr/shell/shell.h>
 #include "fl_audioin.h"
 #include "fl_events.h"
 #include "fl_strip.h"
@@ -27,9 +29,38 @@ LOG_MODULE_REGISTER(main);
 
 #endif
 
+static int cmd_demo_board(const struct shell *sh, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(sh, CONFIG_BOARD);
+
+	return 0;
+}
+
+static int cmd_version(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(shell, "Zephyr version %s", KERNEL_VERSION_STRING);
+
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_demo,
+	SHELL_CMD(board, NULL, "Show board name command.", cmd_demo_board),
+	SHELL_SUBCMD_SET_END /* Array terminated. */
+);
+SHELL_CMD_REGISTER(demo, &sub_demo, "Demo commands", NULL);
+
+SHELL_CMD_ARG_REGISTER(version, NULL, "Show kernel version", cmd_version, 1, 0);
+
+
 #define NUM_SAMPLES (1024)
 #define SAMPLE_INDEX_MASK  ((NUM_SAMPLES * 2) - 1)
-#define NUM_OF_PIXELS (30)
+#define NUM_OF_PIXELS (123)
 
 internal int16_t SampleBuffer[2*NUM_SAMPLES];
 internal f32 FftInput[NUM_SAMPLES];
@@ -368,3 +399,4 @@ void main(void)
       }
 	}
 }
+
