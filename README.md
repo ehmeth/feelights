@@ -2,15 +2,13 @@
 A dancefloor lighting system using WS2812 LED strips based on ZephyrOS
 
 ## Application description
-FeeLights is a dancefloor lighting controller that aims to make dancing more pleasurable by ajusting the lighting of a venue to the energy of the music playing.
+FeeLights is a dance floor lighting controller that aims to make dancing more pleasurable by adjusting the lighting of a venue to the energy of the music playing.
 To capture audio, the FeeLights controller uses a built in microphone, so no additional audio cabling is required to install it in a dance venue.
-The system requires WS2812B addressable LED strips as the light source. The controller can power a very short strip for bringup testing, but in general the strips should be powered from external sources.
+The system requires WS2812B addressable LED strips as the light source. The controller can power a very short strip for bring-up testing, but in general the strips should be powered from external sources.
 Multiple strips can be used in parallel to provide more light, but this version of FeeLights software does not support putting different patterns on more than one LED strip
 
 ## Hardware description
-The system is essentially a straightforward input/output data transformation system with a few auxilary components.
-
-<!--- TODO(kleindan) hardware diagram here!  -->
+The system is essentially a straightforward input/output data transformation system with a few auxiliary components.
 
 The core of the system is a STM32F429I DISCOVERY evaluation board, sporting a pretty beefy STM32F429ZI MCU with a Cortex-M4 core and an FPU unit for DSP support.
 FeeLights makes use of the MCU internal ADC and one SPI peripheral (MOSI line only) for WS2812B driving.
@@ -24,45 +22,76 @@ Additional hardware components include:
 - On-board user switch/button for switching to other operating modes of the device
 
 The controller is powered via the DISCOVERY board USB port. 
-Power consumption measurements were not conducted, but given it is a driver for LED strips that consume up to 9 Watts of power per 5 meters (16'4'), the power consumption of the controller can be considered negligable.
+Power consumption measurements were not conducted, but given it is a driver for LED strips that consume up to 9 Watts of power per 5 meters (16'4'), the power consumption of the controller can be considered negligible.
 
 ## Software description
-The controller software is based on Zephyr OS and has been tested with version <!--- TODO(kleindan) VERSION. -->
+The controller software is based on Zephyr OS and has been tested with version 3.1.99.
 
-The code is architected as a simple, event driven state-machine.
+![System State Machine](docs/software-architecture-diagram.png)
 
-<!--- TODO(kleindan) state chart here!  -->
-
-To avoid spending time on moving data around, we're taking full advantage of DMA for transferring audio samples from ADC to memory and out from memory to the LED strips.
-
-## Components description
+### Components description
 
 The code is organized into several modules with well defined responsibilities.
 
-### Main module
+#### Main module
 Entry point of the software. Initializes other modules at startup and runs the main event loop.
 
-### AudioIn module
-Module responsible for reading audio samples and generating an event once a new batch of samples is available.
+The system states are also defined in this module, but maybe these can be extracted into separate modules.
 
-Due to a lacking implementation of the ADC API in Zephyr OS, the ADC and Timer module configuration had to be done bypassing the OS and using the STM32 LowLevel libraries.
+#### Events module
+Provides a simple API for:
+- waiting for events, 
+- emitting events informing the main loop to take action,
+- starting and stopping a periodic timer that will allow for periodic actions.
+
+#### AudioIn module
+Module responsible for reading audio samples and generating an event once a new batch of samples is available.
 
 The module generates an event every 512 samples at 40 kSamples/s, so approximately every 12,8ms
 
-### Button module
+Due to a lacking implementation of the ADC API in Zephyr OS, the ADC and Timer module configuration had to be done bypassing the OS and using the STM32 LowLevel libraries.
+
+The AudioIn module implementation was largely based on [infinity-drive](https://github.com/cycfi/infinity_drive), an open-source project by Cycfi Research (MIT License)
+
+#### Button module
 Aptly named, responsible for handling button presses with simple debouncing. Generates events any time the button is pressed and released.
 
-### Dsp module
-Auxilary module used for calculating the frequency magnitude spectrum using the CMSIS Dsp Real FFT transform functions
+#### Dsp module
+Auxiliary module used for calculating the frequency magnitude spectrum using the CMSIS DSP Real FFT transform functions.
 
-### Lights module
+#### Lights module
+The heart of the system, this module is responsible for translating sound into light.
+
+The program creates colored "Orbs" of light that respond to changes in the sound spectrum and move around the physical space of the strip.
+
+Most parameters of the orbs are random, the colors are chosen from a set of hard-coded palettes; In the end it's simple renderer with relatively simple logic, but this will be the focus of future development.
+
+#### Strip module
+A simple wrapper used for pushing pixels out to the LED strip.
 
 
-### Describe code you re-used from other sources, including the licenses for those
+### Libraries and other third party software
 
-## Diagram(s) of the architecture
+#### Zephyr OS
+This project was based on Zephyr, an open-source, scalable real-time operating system licensed under the Apache License Version 2.0.
+I highly recommend it for quick prototyping, because it offers lots of features with reasonable defaults, good documentation and examples, and a broad range of supported hardware.
+Find their latest documentation [here](https://docs.zephyrproject.org/latest/index.html) or check out their code on [github](https://github.com/zephyrproject-rtos/zephyr).
 
-## Build instructions
+#### CMSIS DSP
+CMSIS DSP library was used for an efficient FFT implementation. It is also licensed under the Apache License Version 2.0.
+
+The documentation for the library can be found [here](https://arm-software.github.io/CMSIS_5/DSP/html/index.html)
+
+### System state machine
+The code is architected as a simple, event driven state-machine.
+
+![System State Machine](docs/system-sm.png)
+
+Internally the above states handle other internal events, but the top-level state transitions are described in the above diagram.
+
+In most cases the device never leaves the Normal Operation mode, but upon installation or inspection it might be useful to cycle through modes that allow to check if all LEDs are operational and power distribution is as it should be.
+
+## Setup instructions
 
 ### Linux
 
@@ -106,17 +135,43 @@ The Zephyr build tool `west` offers a one-command way to connect a gdb debugger 
 west debug
 ```
 
-I would highly recommend finding a good gdb guide and familarize yourself with at least the basics of running and stopping execution, setting breakpoints and displaying variable contents.. Other than that debugging "just works".
-
-### How you powered it (and how you might in the future)
+I would highly recommend finding a good gdb guide and familiarize yourself with at least the basics of running and stopping execution, setting breakpoints and displaying variable contents.. Other than that debugging "just works".
 
 ## Future
-### What would be needed to get this project ready for production?
-### How would you extend this project to do something more? Are there other features you’d like? How would you go about adding them?
+The project was developed in a hurry and in spare time, while maintaining a full-time job and teaching people to dance. There is a lot of uncovered ground here.
 
-# Grading
-# Self assessment of the project: for each criteria, choose a score (1, 2, 3) and explain your reason for the score in 1-2 sentences.  # Have you gone beyond the base requirements? How so?
+### Further development
+Features that were dropped due to time limitations:
+- An ML model for choosing color palettes based on the overall feel of the music
+- Logic responsible for detecting music structure elements, up- and down-beats, phrases, breaks, etc. and reflecting that information in the light-space
+- Support for rendering the light-space onto at least 2 different strips to create a coherent image
 
-# Acknowledgements
+Features that came up during development:
+- Adding an audio-in port to get an better quality signal.
+- Support for a better microphone and ADC.
+- Add over-the-air update for future ML model and logic updates.
+- There seems to be quite a lot of performance gains to be had.
 
-The AudioIn module implementation was largely based on [infinity_drive](https://github.com/cycfi/infinity_drive), an open-source project by Cycfi Research (MIT License)
+### Productizing potential
+I haven't done a lot of market research on this, but I assume there is a wide variety of product for lighting dance venues. My feeling is that those products mostly work randomly and both the venue owners and clients are so accustomed to that, that they don't expect anything more. Maybe this project could change their mind, maybe they wouldn't notice anything different.
+
+To even consider selling this as a product I would have to:
+- Design proper hardware with more emphasis on choosing well-suited components. 
+  Current hardware is a mix of stuff I had lying around, what I could buy in a short time, and an evaluation board chosen for the current cohort of the Making Embedded Systems course.
+  I'm confident there is area for improvement here.
+- Add more logic to the light generation algorithm to actually make the lighting feel in sync with the music. 
+  The current results are pretty good considering the amount of randomness in the decisions, but it's definitely not polished.
+- Do at least one mid-sized dance-room deployment and test the system in action. Check if the results are satisfactory and if the system performs at scale.
+- Do robustness testing, make sure the device behaves reliably for at least a year of frequent use
+
+## Acknowledgements
+
+I know it may seem cheesy, but I want to thank my partner Bogumiła Galińska for all her support during the development of this project. Being there when I was hyper-focused on this project meant the world to me.
+
+I would also like to thank everybody in the Orange Stars cohort of the Making Embedded Systems course on Classpert. You are a great support group, I loved every minute we got to spend together and when I got to see the problems from diverse perspectives.
+
+Many, many thanks to the mentors and coordinators of this course, and of course our teacher, Elecia. The collective amount of knowledge, expertise and support was overwhelming.
+
+Classpert people went above and beyond to facilitate this course too, so also lots of thanks to them, especially Jason Rouleau.
+
+And last but not least thanks to my employer Codelab sp. z o.o. for paying for this experience.
