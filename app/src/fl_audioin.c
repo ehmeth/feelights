@@ -64,7 +64,7 @@ u32 AudioInInit(u16* Buffer, u32 BufferSize)
    // Timer config 
    u32 Tim2ClockFrequency = 200000;
    u32 SamplingFrequency = 40000;
-   u32 TimerClock = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 2;
+   u32 TimerClock = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 4;
    u32 Result = 0;
 
    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);

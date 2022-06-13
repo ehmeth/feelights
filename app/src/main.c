@@ -18,13 +18,12 @@ LOG_MODULE_REGISTER(main);
 #ifdef CONFIG_TIMING_FUNCTIONS
 #include <timing/timing.h>
 /* TODO(kleindan)
- * Also we need a west.yml file for easier building in the future: https://github.com/kpochwala/kubot-software/blob/main/west.yml
  *
- * Samples:    11648299ns
- * Fft:        11079338ns
- * Update:       410983ns
- * Pixel:       2454577ns
- * Total       25593201ns
+ * Samples:     1152334ns
+ * Fft:        11032024ns
+ * Update:       608110ns
+ * Pixel:           738ns
+ * Total       12793208ns
  */
 
 #endif
