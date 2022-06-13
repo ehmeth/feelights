@@ -7,6 +7,10 @@ To capture audio, the FeeLights controller uses a built in microphone, so no add
 The system requires WS2812B addressable LED strips as the light source. The controller can power a very short strip for bring-up testing, but in general the strips should be powered from external sources.
 Multiple strips can be used in parallel to provide more light, but this version of FeeLights software does not support putting different patterns on more than one LED strip
 
+Check out my demo:
+
+[![FeeLights Demo Thumbnail](https://img.youtube.com/vi/2CluzA2E0z4/0.jpg)](https://www.youtube.com/watch?v=2CluzA2E0z4)
+
 ## Hardware description
 The system is essentially a straightforward input/output data transformation system with a few auxiliary components.
 
@@ -163,6 +167,25 @@ To even consider selling this as a product I would have to:
   The current results are pretty good considering the amount of randomness in the decisions, but it's definitely not polished.
 - Do at least one mid-sized dance-room deployment and test the system in action. Check if the results are satisfactory and if the system performs at scale.
 - Do robustness testing, make sure the device behaves reliably for at least a year of frequent use
+
+## Profiling and fixing the audio sampling
+
+At the prototyping stage I setup the ADC reading using the async version of the Zephyr ADC API to collect samples every 22us.
+This would roughly reflect the desired sampling frequency. After introducing some timing measurements to verify everything is working as expected, it was clear there was a problem, as I noted in the comment:
+```
+ * Samples: 21,651,281 ns <- This is obviously a problem...
+ * Fft:      1,195,757 ns 
+ * Update:     229,720 ns
+ * Pixel:    2,471,695 ns
+ * Total    25,548,456 ns
+128 samples at 22us should amount to 2.8ms, not 21.6ms
+```
+
+After a not-so-brief code inspection I discovered that the ADC async API still relied on Zephyr system ticks and to trigger ADC measurements one by one.
+In theory I could have increased the system tick frequency and hope for the best, but I assumed that would not provide a deterministic sampling frequency and waste CPU time.
+I've decided to go with ADC triggered by a TIMer unit and data transferred by DMA, and got pretty stable, reliable results.
+
+After lowering the sampling rate to 40kSamples/s and increasing the number of samples to 512 per batch, the expected time between batches was measured at a steady ~12.8ms.
 
 ## Acknowledgements
 
