@@ -19,11 +19,11 @@ LOG_MODULE_REGISTER(main);
 #include <timing/timing.h>
 /* TODO(kleindan)
  *
- * Samples:     1152334ns
- * Fft:        11032024ns
- * Update:       608110ns
- * Pixel:           738ns
- * Total       12793208ns
+ * Spare:       1,152,334 ns
+ * Fft:        11,032,024 ns
+ * Update:        608,110 ns
+ * Pixel:             738 ns
+ * Total       12,793,208 ns
  */
 
 #endif
